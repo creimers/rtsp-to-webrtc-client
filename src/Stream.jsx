@@ -21,7 +21,7 @@ const Stream = ({ background, streamId }) => {
     null
   );
 
-  useEffect(() => {
+  const connect = async () => {
     const peerConnection = new RTCPeerConnection();
 
     peerConnection.onconnectionstatechange = (e) => {
@@ -49,23 +49,29 @@ const Stream = ({ background, streamId }) => {
     peerConnection.onicecandidate = async (event) => {
       console.log("onicecandidate");
       if (event.candidate === null) {
-        const response = await fetch(
-          `http://${window.location.hostname}:8083/recieve`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              suuid: streamId,
-              data: btoa(peerConnection.localDescription.sdp),
-            }),
-          }
-        );
-        const data = await response.json();
-
         try {
-          peerConnection.setRemoteDescription(
-            new RTCSessionDescription({ type: "answer", sdp: atob(data.data) })
+
+          const response = await fetch(
+            `http://${window.location.hostname}:8083/recieve`,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                suuid: streamId,
+                data: btoa(peerConnection.localDescription.sdp),
+              }),
+            }
           );
+          const data = await response.json();
+
+          try {
+            peerConnection.setRemoteDescription(
+              new RTCSessionDescription({ type: "answer", sdp: atob(data.data) })
+            );
+          } catch (error) {
+            console.log(error);
+          }
         } catch (error) {
+
           console.log(error);
         }
       }
@@ -83,13 +89,19 @@ const Stream = ({ background, streamId }) => {
     } catch (error) {
       console.error(error);
     }
-  }, [streamId]);
+
+  }
+
+  useEffect(() => {
+    connect()
+  }, [connect])
 
   return (
     <Wrapper background={background}>
       <StyledVideo ref={videoRef} />
       <p>ice connection state: {iceConnectionState}</p>
       <p>ice connection state change: {iceConnectionStateChange}</p>
+      <button onClick={connect}>retry</button>
     </Wrapper>
   );
 };
