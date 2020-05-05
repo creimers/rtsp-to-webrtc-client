@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import styled from "styled-components";
 
@@ -21,7 +21,11 @@ const Stream = ({ background, streamId }) => {
     null
   );
 
-  const connect = async () => {
+  const connect = useCallback(async () => {
+    // first things first: reset
+    setIceConnectionState(null);
+    setIceConnectionStateChange(null);
+
     const peerConnection = new RTCPeerConnection();
 
     peerConnection.onconnectionstatechange = (e) => {
@@ -50,7 +54,6 @@ const Stream = ({ background, streamId }) => {
       console.log("onicecandidate");
       if (event.candidate === null) {
         try {
-
           const response = await fetch(
             `http://${window.location.hostname}:8083/recieve`,
             {
@@ -63,15 +66,13 @@ const Stream = ({ background, streamId }) => {
           );
           const data = await response.json();
 
-          try {
-            peerConnection.setRemoteDescription(
-              new RTCSessionDescription({ type: "answer", sdp: atob(data.data) })
-            );
-          } catch (error) {
-            console.log(error);
-          }
+          peerConnection.setRemoteDescription(
+            new RTCSessionDescription({
+              type: "answer",
+              sdp: atob(data.data),
+            })
+          );
         } catch (error) {
-
           console.log(error);
         }
       }
@@ -89,12 +90,11 @@ const Stream = ({ background, streamId }) => {
     } catch (error) {
       console.error(error);
     }
-
-  }
+  }, [streamId]);
 
   useEffect(() => {
-    connect()
-  }, [connect])
+    connect();
+  }, [connect]);
 
   return (
     <Wrapper background={background}>
